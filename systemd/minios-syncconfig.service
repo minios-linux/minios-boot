@@ -1,0 +1,9 @@
+[Unit]
+Description=Sync minios.conf changes
+
+[Service]
+Type=oneshot
+ExecStart=-/bin/sh -c "if [ -f /run/initramfs/memory/data/minios/minios.conf ] && [ -w /run/initramfs/memory/data/minios/minios.conf ]; then cp -fp /etc/minios/minios.conf /run/initramfs/memory/data/minios/minios.conf; fi; sync"
+
+[Install]
+RequiredBy=minios-syncconfig.path

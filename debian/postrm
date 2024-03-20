@@ -1,0 +1,4 @@
+#!/bin/bash
+# postrm script for minios-boot
+
+systemctl daemon-reload
