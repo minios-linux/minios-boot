@@ -2,5 +2,5 @@
 # preinst script for minios-boot
 
 if [ -f /usr/lib/systemd/system/apparmor.service ] && [ ! -f /usr/lib/systemd/system/apparmor.service.bak ]; then
-    mv /usr/lib/systemd/system/apparmor.service /usr/lib/systemd/system/apparmor.service.bak
+    mv /usr/lib/systemd/system/apparmor.service /usr/lib/systemd/system/apparmor.service.bak || true
 fi
