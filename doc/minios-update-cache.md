@@ -1,7 +1,7 @@
-# MiniOS Cache Updater Manual
+% MINIOS-UPDATE-CACHE(1) MiniOS Live Manual
 
 ## NAME
-**MiniOS Cache Updater** - manual page for MiniOS Cache Updater
+**minios-update-cache** - Updates cache for all MiniOS bundles in a specified location.
 
 ## SYNOPSIS
 `minios-update-cache [BUNDLE-MOUNT-POINTS-LOCATION]`

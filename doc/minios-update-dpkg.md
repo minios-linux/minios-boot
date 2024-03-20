@@ -1,7 +1,7 @@
-# MiniOS dpkg Database Builder Manual
+% MINIOS-UPDATE-DPKG(1) MiniOS Live Manual
 
 ## NAME
-**MiniOS dpkg Database Builder** - manual page for MiniOS dpkg Database Builder
+**minios-update-dpkg** - Builds a common dpkg database from all MiniOS bundles.
 
 ## SYNOPSIS
 `minios-update-dpkg [BUNDLES-MOUNT-POINTS-LOCATION] [OPTIONAL: CHANGES_LOCATION]`

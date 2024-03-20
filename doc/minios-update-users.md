@@ -1,8 +1,8 @@
-# User Files Creator Manual
+% MINIOS-UPDATE-USERS(1) MiniOS Live Manual
 
 ## NAME
 
-**minios-update-users** - Shell script to build common users files based on all bundles
+**minios-update-users** - Shell script to build common users files based on all bundles.
 
 ## SYNOPSIS
 
