@@ -54,10 +54,7 @@ read_config() {
     Usage:   $0 [bundles mount points location]
     Example: $0 /run/initramfs/memory/bundles" && exit 1
 
-if [ ! -d /var/log/minios ]; then
-    mkdir -p /var/log/minios
-fi
-
+mkdir -p /var/log/minios
 exec 19>/var/log/minios/minios-update-cache.trace
 BASH_XTRACEFD=19
 PS4='${LINENO}: '
