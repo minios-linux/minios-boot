@@ -540,15 +540,6 @@ else
 fi
 
 ##### Software configuration #####
-# Setup Firefox
-if [ -f "/usr/share/firefox-esr/browser/defaults/preferences/firefox-branding.js" ]; then
-    FIREFOX_BRANDING="/usr/share/firefox-esr/browser/defaults/preferences/firefox-branding.js"
-elif [ -f "/etc/firefox/syspref.js" ]; then
-    FIREFOX_BRANDING="/etc/firefox/syspref.js"
-fi
-if [ -d /usr/share/minios/html ] && [ -f "${FIREFOX_BRANDING}" ]; then
-    /usr/sbin/minios-firefox-patch
-fi
 # Gnome Software fix
 mkdir -p /var/cache/swcatalog/cache
 

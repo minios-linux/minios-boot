@@ -1,9 +1,7 @@
 # Variables
 SBIN = $(shell find sbin -type f)
-SYSTEMD = $(shell find systemd -type f)
 
 SBINDIR = usr/sbin
-SYSTEMDDIR = usr/lib/systemd/system
 
 DOC_FILES = $(shell find doc -name "*.md")
 MAN_FILES = $(patsubst doc/%.md, man/%.1, $(DOC_FILES))
@@ -31,6 +29,3 @@ clean:
 install: build
 	install -d $(DESTDIR)/$(SBINDIR)
 	install -m755 $(SBIN) $(DESTDIR)/$(SBINDIR)
-
-	install -d $(DESTDIR)/$(SYSTEMDDIR)
-	install -m644 $(SYSTEMD) $(DESTDIR)/$(SYSTEMDDIR)

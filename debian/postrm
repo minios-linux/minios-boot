@@ -1,4 +1,13 @@
 #!/bin/bash
-# postrm script for minios-boot
 
-systemctl daemon-reload
+# Define path to the file
+FILE="/lib/systemd/system/apparmor.service"
+BACKUP="${FILE}.bak"
+
+if [ -f "${BACKUP}" ] && grep -q "LiveKit Live CD" "${FILE}"; then
+    mv -f "${BACKUP}" "${FILE}"
+elif [ -f "${BACKUP}" ] && [ ! -f "${FILE}" ]; then
+    rm "${BACKUP}"
+fi
+
+#DEBHELPER#

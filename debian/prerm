@@ -1,6 +1,0 @@
-#!/bin/bash
-# prerm script for minios-boot
-
-if [ -f /usr/lib/systemd/system/apparmor.service.bak ]; then
-    mv -f /usr/lib/systemd/system/apparmor.service.bak /usr/lib/systemd/system/apparmor.service || true
-fi

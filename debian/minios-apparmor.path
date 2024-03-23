@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch apparmor service for changes
+
+[Path]
+PathChanged=/lib/systemd/system/apparmor.service
+
+[Install]
+WantedBy=multi-user.target

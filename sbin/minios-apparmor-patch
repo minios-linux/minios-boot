@@ -1,0 +1,34 @@
+#!/bin/bash
+
+APPARMOR_FILE_PATH="/lib/systemd/system/apparmor.service"
+LINE_NUMBER=$(awk '/\[Service\]/{ print NR; exit }' "${APPARMOR_FILE_PATH}")
+
+# Add new conditions
+COND1="# Don't start this unit on LiveKit Live CD"
+COND2="ConditionPathExists=!/run/initramfs/memory/bundles"
+COND3="# Don't start this unit on UIRD Live CD"
+COND4="ConditionPathExists=!/memory/bundles"
+
+# Backup the original file
+if [ -f "${APPARMOR_FILE_PATH}" ] && [ ! -f "${APPARMOR_FILE_PATH}.bak" ]; then
+    cp "${APPARMOR_FILE_PATH}" "${APPARMOR_FILE_PATH}.bak"
+    echo "Backup for ${APPARMOR_FILE_PATH} created."
+fi
+
+# Insert conditions if not exists
+if ! grep -q "${COND4}" "${APPARMOR_FILE_PATH}"; then
+    sed -i "${LINE_NUMBER}i${COND3}\n${COND4}\n" "${APPARMOR_FILE_PATH}"
+fi
+if ! grep -q "${COND2}" "${APPARMOR_FILE_PATH}"; then
+    sed -i "${LINE_NUMBER}i${COND1}\n${COND2}\n" "${APPARMOR_FILE_PATH}"
+fi
+
+echo "Config Applied"
+
+# Remove backup if original is missing
+if [ -f "${APPARMOR_FILE_PATH}.bak" ] && [ ! -f "${APPARMOR_FILE_PATH}" ]; then
+    rm "${APPARMOR_FILE_PATH}.bak"
+    echo "Backup for ${APPARMOR_FILE_PATH} removed."
+fi
+
+exit 0

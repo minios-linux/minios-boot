@@ -1,0 +1,9 @@
+[Unit]
+Description=Changes apparmor service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/minios-apparmor-patch
+
+[Install]
+RequiredBy=minios-apparmor.path
