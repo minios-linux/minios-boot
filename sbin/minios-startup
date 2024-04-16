@@ -179,7 +179,7 @@ if [ -f "${CONFIG}" ]; then
     esac
     if [ "${DISTRIBUTION_TYPE}" = "ubuntu" ]; then
         cat <<EOF >>/etc/issue
-                        Based on [1;33mUbuntu[0;29m.
+                        Based on [1;38;5;214mUbuntu[0;29m.
 EOF
     elif [ "${DISTRIBUTION_TYPE}" = "debian" ] && [ "${DISTRIBUTION}" = "kali-rolling" ]; then
         cat <<EOF >>/etc/issue
