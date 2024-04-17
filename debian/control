@@ -8,7 +8,7 @@ Homepage: https://minios.dev
 
 Package: minios-boot
 Architecture: all
-Depends: bash (>= 5.0), coreutils (>= 8.30), gettext (>= 0.19), grep (>= 3.3), sed (>= 4.7), mawk (>= 1.3), squashfs-tools (>= 4.3), util-linux (>= 2.33), systemd-sysv (>= 241), libminioslive (>= 3.4), ${misc:Depends}
+Depends: bash (>= 4.4), coreutils (>= 8.28), gettext (>= 0.19), grep (>= 3.1), sed (>= 4.4), mawk (>= 1.3), squashfs-tools (>= 4.3), util-linux (>= 2.31), systemd-sysv (>= 237), libminioslive (>= 3.4), ${misc:Depends}
 Description: MiniOS Linux boot scripts.
  MiniOS Boot is a collection of scripts needed to boot MiniOS and
  provide the MiniOS features described in the
