@@ -4,6 +4,7 @@ Description=Changes apparmor service
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/minios-apparmor-patch
+TimeoutStartSec=60
 
 [Install]
 RequiredBy=minios-apparmor.path

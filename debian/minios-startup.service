@@ -10,6 +10,7 @@ DefaultDependencies=no
 Type=oneshot
 RemainAfterExit=true
 ExecStart=-/bin/sh -c 'if [ ! -d /var/log/minios ]; then mkdir /var/log/minios; fi; /usr/sbin/minios-startup >/var/log/minios/startup.output 2>&1'
+TimeoutStartSec=60
 
 [Install]
 WantedBy=basic.target

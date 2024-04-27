@@ -320,84 +320,22 @@ if [ -f /usr/bin/x11vnc ]; then
     x11vnc -storepasswd "${ROOT_PASSWORD}" /etc/vncpassword
 fi
 
-if [ "${CLOUD}" != "true" ]; then
-    if [ "${USER_NAME}" != "root" ]; then
-        echo "User name is ${USER_NAME}"
-        # Set up user
-        USER_GROUP="${USER_NAME}"
-        if [ ! -f /var/.system_configured ]; then
-            adduser --uid 1000 --gecos '' "${USER_NAME}" --disabled-password
-            usermod -aG adm,cdrom,sudo,dip,plugdev,users "${USER_NAME}"
-            if grep -q "lpadmin" /etc/group; then
-                usermod -aG lpadmin,sambashare "${USER_NAME}"
-            fi
-            if grep -q "libvirt" /etc/group; then
-                usermod -aG docker,libvirt "${USER_NAME}"
-            fi
-            if [ ! -f /usr/bin/pulseaudio ]; then
-                usermod -aG audio "${USER_NAME}"
-            fi
-            cp -rT /etc/skel "/home/${USER_NAME}"
-            # create user directories
-            if [ -d "/home/${USER_NAME}" ]; then
-                for DIR in Desktop Documents Downloads Music Pictures Public Templates Videos; do
-                    mkdir -p "/home/${USER_NAME}/${DIR}"
-                done
-                if [ ! -d "/home/${USER_NAME}/.ssh" ]; then
-                    mkdir "/home/${USER_NAME}/.ssh"
-                    chmod 700 "/home/${USER_NAME}/.ssh"
-                fi
-                if [ -f /root/.ssh/authorized_keys ]; then
-                    cp /root/.ssh/authorized_keys "/home/${USER_NAME}/.ssh/authorized_keys"
-                fi
-                USER_ID=$(id -u "${USER_NAME}")
-                GROUP_ID=$(id -g "${USER_NAME}")
-                chown ${USER_ID}:${GROUP_ID} "/home/${USER_NAME}"
-                chown -R ${USER_ID}:${GROUP_ID} "/home/${USER_NAME}"
-            fi
-        # These lines include the ability to change the username using a configuration file or through kernel parameters.
-        elif [ -n "${CURRENT_USER_NAME}" ] && [ "${USER_NAME}" != "${CURRENT_USER_NAME}" ]; then
-            usermod -l "${USER_NAME}" "${CURRENT_USER_NAME}"
-            usermod -m -d "/home/${USER_NAME}" "${USER_NAME}"
-            groupmod -n "${USER_GROUP}" "${CURRENT_USER_GROUP}"
+read_config "$CONFIG" USER_SETUP
+if [ "${USER_SETUP}" = "systemd" ]; then
+    if [ "${CLOUD}" != "true" ]; then
+        if [ "${USER_NAME}" != "root" ]; then
+            user_setup "${USER_NAME}"
+            user_modifications "${USER_NAME}"
+            change_user "${USER_NAME}" "${CURRENT_USER_NAME}" "${CURRENT_USER_GROUP}"
+            create_user_dirs "${USER_NAME}"
+        elif [ "${DESKTOP_ENVIRONMENT}" = "flux" ]; then
+            user_setup "guest"
+            create_user_dirs "guest"
         fi
-    elif [ "${DESKTOP_ENVIRONMENT}" = "flux" ]; then
-        echo "User name is guest"
-        # Set up user
-        if [ ! -f /var/.system_configured ]; then
-            adduser --uid 1000 --gecos '' guest --disabled-password
-            usermod -aG adm,cdrom,sudo,dip,plugdev,users guest
-            if grep -q "lpadmin" /etc/group; then
-                usermod -aG lpadmin,sambashare guest
-            fi
-            if [ ! -f /usr/bin/pulseaudio ]; then
-                usermod -aG audio guest
-            fi
-            cp -rT /etc/skel "/home/guest"
-            chown guest:guest "/home/guest"
-            chown -R guest:guest "/home/guest"
-        fi
-        # create user directories
-        if [ -d "/home/guest" ]; then
-            for DIR in Desktop Documents Downloads Music Pictures Public Templates Videos; do
-                mkdir -p "/home/guest/${DIR}"
-            done
-            if [ ! -d "/home/guest/.ssh" ]; then
-                mkdir "/home/guest/.ssh"
-                chmod 700 "/home/guest/.ssh"
-            fi
-            if [ -f /root/.ssh/authorized_keys ]; then
-                cp /root/.ssh/authorized_keys "/home/guest/.ssh/authorized_keys"
-            fi
-            USER_ID=$(id -u "guest")
-            GROUP_ID=$(id -g "guest")
-            chown ${USER_ID}:${GROUP_ID} "/home/guest"
-            chown -R ${USER_ID}:${GROUP_ID} "/home/guest"
-        fi
+    else
+        USER_NAME="root"
+        DEFAULT_TARGET="multi-user"
     fi
-else
-    USER_NAME="root"
-    DEFAULT_TARGET="multi-user"
 fi
 
 # Set up password for root
