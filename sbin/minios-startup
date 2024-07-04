@@ -55,6 +55,13 @@ else
     MEDIA="${FROM}"
 fi
 
+FS_TYPE=$(get_filesystem_type ${MEDIA})
+MEDIA_ROOT=$(get_mount_point ${MEDIA})
+
+if [ "${TORAM}" = "false" ] && ([ "${FS_TYPE}" = "vfat" ] || [ "${FS_TYPE}" = "ntfs" ] || [ "${FS_TYPE}" = "exfat" ]); then
+    chmod 777 "${MEDIA_ROOT}"
+fi
+
 if id -nu 1000 2>/dev/null; then
     CURRENT_USER_NAME=$(id -nu 1000)
     CURRENT_USER_GROUP=$(id -ng 1000)
@@ -62,7 +69,7 @@ fi
 
 # Comparison of configuration files on the media and in the system
 touch "${MEDIA}/.empty" 2>/dev/null && rm -f "${MEDIA}/.empty" 2>/dev/null
-if [ $? -ne 0 ]; then
+if [ $? -ne 0 ] || [ "${TORAM}" = "true" ]; then
     WRITABLE="false"
     if [ -z "${SSH_KEY}" ]; then
         SSH_KEY="authorized_keys"
@@ -148,6 +155,7 @@ echo "CLOUD: $CLOUD"
 echo "SCRIPTS: $SCRIPTS"
 echo "HIDE_CREDENTIALS: $HIDE_CREDENTIALS"
 echo "AUTOLOGIN: $AUTOLOGIN"
+echo "LINK_USER_DIRS: $LINK_USER_DIRS"
 echo "SYSTEM_TYPE: $SYSTEM_TYPE"
 echo ""
 
@@ -233,6 +241,7 @@ declare -A VARIABLES_DEFAULTS=(
     ["SCRIPTS"]="false"
     ["HIDE_CREDENTIALS"]="false"
     ["AUTOLOGIN"]="true"
+    ["LINK_USER_DIRS"]="false"
     ["SYSTEM_TYPE"]="classic"
 )
 
@@ -287,6 +296,12 @@ if [[ ! "${AUTOLOGIN}" =~ ^(true|false)$ ]]; then
     AUTOLOGIN="${VARIABLES_DEFAULTS[AUTOLOGIN]}"
 fi
 
+# Check if LINK_USER_DIRS is not a valid value
+if [[ ! "${LINK_USER_DIRS}" =~ ^(true|false)$ ]]; then
+    # Set LINK_USER_DIRS to its default value
+    LINK_USER_DIRS="${VARIABLES_DEFAULTS[LINK_USER_DIRS]}"
+fi
+
 if [ "${SYSTEM_TYPE}" = "puzzle" ]; then
     # fix users
     if [ -x "/usr/sbin/minios-update-users" ]; then
@@ -308,7 +323,11 @@ if [ ! -f /var/.system_configured ]; then
     # create root directories
     if [ -d /root ]; then
         for DIR in Desktop Documents Downloads Music Pictures Public Templates Videos; do
-            mkdir -p "/root/${DIR}"
+            if [ "${DESKTOP_ENVIRONMENT}" = "flux" ]; then
+                ln -s "/home/guest/${DIR}" "/root/${DIR}"
+            else
+                mkdir -p "/root/${DIR}"
+            fi
         done
     fi
     chown 0:0 /root
@@ -324,13 +343,10 @@ read_config "$CONFIG" USER_SETUP
 if [ "${USER_SETUP}" = "systemd" ]; then
     if [ "${CLOUD}" != "true" ]; then
         if [ "${USER_NAME}" != "root" ]; then
-            user_setup "${USER_NAME}"
-            user_modifications "${USER_NAME}"
+            user_setup "${USER_NAME}" "${MEDIA}" "${LINK_USER_DIRS}" "${WRITABLE}"
             change_user "${USER_NAME}" "${CURRENT_USER_NAME}" "${CURRENT_USER_GROUP}"
-            create_user_dirs "${USER_NAME}"
         elif [ "${DESKTOP_ENVIRONMENT}" = "flux" ]; then
-            user_setup "guest"
-            create_user_dirs "guest"
+            user_setup "guest" "${MEDIA}"
         fi
     else
         USER_NAME="root"
@@ -423,7 +439,7 @@ EOF
 fi
 
 echo "=====> Making changes to the configuration file..."
-update_config "/etc/minios/${LIVEKITNAME}.conf" USER_NAME USER_PASSWORD ROOT_PASSWORD HOST_NAME DEFAULT_TARGET ENABLE_SERVICES DISABLE_SERVICES SSH_KEY SCRIPTS AUTOLOGIN HIDE_CREDENTIALS SYSTEM_TYPE EXPORT_LOGS
+update_config "/etc/minios/${LIVEKITNAME}.conf" USER_NAME USER_PASSWORD ROOT_PASSWORD HOST_NAME DEFAULT_TARGET ENABLE_SERVICES DISABLE_SERVICES SSH_KEY SCRIPTS AUTOLOGIN LINK_USER_DIRS HIDE_CREDENTIALS SYSTEM_TYPE EXPORT_LOGS
 echo ""
 echo "=====> New /etc/minios/${LIVEKITNAME}.conf configuration file contents:"
 cat "/etc/minios/${LIVEKITNAME}.conf"
