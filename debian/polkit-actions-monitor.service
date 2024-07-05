@@ -1,0 +1,10 @@
+[Unit]
+Description=React to modifications in /usr/share/polkit-1/actions
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/polkit-actions-handler
+TimeoutStartSec=60
+
+[Install]
+RequiredBy=polkit-actions-monitor.path

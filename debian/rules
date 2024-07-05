@@ -11,4 +11,6 @@ override_dh_installsystemd:
 	dh_installsystemd --name=ssh-keygen ssh-keygen.service
 	dh_installsystemd --name=minios-apparmor minios-apparmor.path
 	dh_installsystemd --name=minios-apparmor minios-apparmor.service
+	dh_installsystemd --name=polkit-actions-monitor polkit-actions-monitor.path
+	dh_installsystemd --name=polkit-actions-monitor polkit-actions-monitor.service
 	dh_installsystemd --remaining-packages

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Directory to monitor
+DIR="/usr/share/polkit-1/actions"
+
+# Variable to track if a file has been modified
+MODIFIED=false
+
+# Loop over all files in the directory
+for FILE in "$DIR"/*; do
+    # Check if the FILE is a regular file and if it is, process it
+    if [ -f "$FILE" ]; then
+        # Check if the file not contains <allow_active>yes<\/allow_active> tags
+        if ! grep -q '<allow_active>yes<\/allow_active>' "$FILE"; then
+            # Use sed to replace any <allow_active> value with <allow_active>yes</allow_active> in the FILE
+            if sed -i 's/<allow_active>.*<\/allow_active>/<allow_active>yes<\/allow_active>/g' "$FILE"; then
+                echo "File $FILE has been successfully modified."
+                MODIFIED=true
+            else
+                echo "Error modifying file $FILE."
+            fi
+        fi
+    fi
+done
+
+# Check if a file has been modified
+if $MODIFIED; then
+    echo "The $DIR directory has been checked, and necessary files have been updated."
+else
+    echo "The $DIR directory has been checked, but no files needed to be updated."
+fi

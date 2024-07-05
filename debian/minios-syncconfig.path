@@ -1,5 +1,5 @@
 [Unit]
-Description=Watch /etc/minios/minios.conf for changes
+Description=Monitor /etc/minios/minios.conf for changes
 
 [Path]
 PathModified=/etc/minios/minios.conf
