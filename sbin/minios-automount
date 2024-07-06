@@ -29,6 +29,11 @@ if ! cat /proc/cmdline | grep -q automount; then
    exit
 fi
 
+# if minios-installer script is running, then exit
+if pgrep -f "minios-installer" >/dev/null; then
+   exit
+fi
+
 if [ "$ACTION" = "add" -o "$ACTION" = "change" ]; then
    if [ ! -r "$TARGET" ]; then # skip if exists
 
