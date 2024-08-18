@@ -18,18 +18,14 @@ PS4='${LINENO}: '
 set -x
 
 # Variables
+LIVEKITNAME="minios"
+BEXT="sb"
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 CMDLINE=$(cat /proc/cmdline)
 CONFIG="/etc/minios/config"
 read_cmdline ${CMDLINE}
 if [ "${STATIC_PROFILES}" = "true" ]; then
     exit 0
-fi
-if [ -f "${CONFIG}" ]; then
-    read_config "${CONFIG}" LIVEKITNAME BEXT
-else
-    LIVEKITNAME="minios"
-    BEXT="sb"
 fi
 
 if [ -z "${FROM}" ] || echo "${FROM}" | grep 'http://' || [ -d "/run/initramfs/memory/iso" ]; then
@@ -326,11 +322,11 @@ if [ ! -f /var/.system_configured ]; then
     # create root directories
     if [ -d /root ]; then
         for DIR in Desktop Documents Downloads Music Pictures Public Templates Videos; do
-            if [ "${DESKTOP_ENVIRONMENT}" = "flux" ]; then
-                ln -s "/home/guest/${DIR}" "/root/${DIR}"
-            else
-                mkdir -p "/root/${DIR}"
-            fi
+            #if [ "${DESKTOP_ENVIRONMENT}" = "flux" ]; then
+            #ln -s "/home/guest/${DIR}" "/root/${DIR}"
+            #else
+            mkdir -p "/root/${DIR}"
+            #fi
         done
     fi
     chown 0:0 /root
@@ -464,6 +460,19 @@ EndSection
 EOF
     fi
 fi
+
+VIRTRESFILE="/etc/xdg/autostart/minios-virtreschange.desktop"
+if [ -f "${VIRTRESFILE}" ]; then
+    if virt-what | egrep -iq 'virtualbox|vmware|kvm|qemu'; then
+        sed -i 's/X-GNOME-Autostart-enabled=false/X-GNOME-Autostart-enabled=true/g' "${VIRTRESFILE}"
+        echo "Autostart ${VIRTRESFILE} has been enabled."
+    else
+        echo "The virtual environment is not VirtualBox, VMware, KVM, or QEMU. Autostart ${VIRTRESFILE} not enabled."
+    fi
+else
+    echo "File ${VIRTRESFILE} not found."
+fi
+
 if [ "${AUTOLOGIN}" = "true" ]; then
     if [ -f /etc/default/nodm ]; then
         sed -i -e "/NODM_USER=/s/=.*/=\"${USER_NAME}\"/" /etc/default/nodm
