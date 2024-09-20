@@ -195,7 +195,7 @@ EOF
         cat <<EOF >>/etc/issue
                         Based on [1;34mAstra Linux[0;29m.
 EOF
-    elif [ "$DISTRIBUTION_TYPE" = "debian" ] && [ "$DISTRIBUTION" != "kali-rolling" ] && [ "$DISTRIBUTION" != "orel" ]; then
+    elif [ "$DISTRIBUTION_TYPE" = "debian" ]; then
         cat <<EOF >>/etc/issue
                         Based on [1;31mDebian GNU/Linux[0;29m.
 EOF
