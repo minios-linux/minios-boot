@@ -66,95 +66,100 @@ if id -nu 1000 2>/dev/null; then
 fi
 
 # Comparison of configuration files on the media and in the system
-touch "$MEDIA/.empty" 2>/dev/null && rm -f "$MEDIA/.empty" 2>/dev/null
-if [ $? -ne 0 ] || [ "$TORAM" = "true" ]; then
+information "Checking if the media is writable or if TORAM mode is enabled"
+if ! test -w "$MEDIA" || [ "$TORAM" = "true" ]; then
     WRITABLE="false"
-    if [ -z "$SSH_KEY" ]; then
-        SSH_KEY="authorized_keys"
+    information "The media is not writable or the system is running in TORAM mode (operating from RAM). Proceeding to copy configuration from the media."
+
+    # Copy SSH Key configuration from the media
+    SSH_KEY="${SSH_KEY:-$(read_config_value "$MEDIA/minios.conf" SSH_KEY)}"
+    SSH_KEY="${SSH_KEY:-authorized_keys}"
+    information "Using SSH key configuration: $SSH_KEY"
+
+    # Check if minios.conf exists on the media but not in the system, then copy it
+    if [ -f "$MEDIA/minios.conf" ] && [ ! -f "/etc/minios/minios.conf" ]; then
+        information "Copying minios.conf from media ($MEDIA/minios.conf) to the system (/etc/minios/minios.conf)"
+        cp -fp "$MEDIA/minios.conf" "/etc/minios/minios.conf" && information "minios.conf copied successfully." || error "Failed to copy minios.conf."
+    else
+        warning "minios.conf not found on media or already exists in the system."
     fi
-    if [ -f "$MEDIA/minios.conf" ]; then
-        if [ ! -f "/etc/minios/minios.conf" ]; then
-            cp -fp "$MEDIA/minios.conf" "/etc/minios/minios.conf"
-        fi
-    fi
+
+    # Copy SSH keys
+    information "Checking for SSH keys on the media."
     if [ -f "$MEDIA/$SSH_KEY" ]; then
-        if [ ! -d "/root/.ssh" ]; then
-            mkdir /root/.ssh
-            chmod 700 /root/.ssh
-            cp -fp "$MEDIA/$SSH_KEY" "/root/.ssh/authorized_keys"
-            chmod 600 "/root/.ssh/authorized_keys"
-        fi
+        [ ! -d "/root/.ssh" ] && information "Creating /root/.ssh directory." && mkdir /root/.ssh && chmod 700 /root/.ssh
+        cp -fp "$MEDIA/$SSH_KEY" "/root/.ssh/authorized_keys" && chmod 600 "/root/.ssh/authorized_keys" && information "SSH keys copied to /root/.ssh/authorized_keys successfully." || error "Failed to copy SSH keys."
+    else
+        warning "SSH key file not found on media: $MEDIA/$SSH_KEY"
     fi
 else
     WRITABLE="true"
+    information "The media is writable. Synchronizing configuration between media and system."
+
+    # Create /root/.ssh directory if not exists
+    [ ! -d "/root/.ssh" ] && information "Creating /root/.ssh directory." && mkdir /root/.ssh && chmod 700 /root/.ssh
+
     if [ -d "$MEDIA" ]; then
+        information "Both media and system configuration files are present. Checking which version is newer."
+
         if [ -f "$MEDIA/minios.conf" ] && [ -f "/etc/minios/minios.conf" ]; then
             if [ "$MEDIA/minios.conf" -nt "/etc/minios/minios.conf" ]; then
-                cp -fp "$MEDIA/minios.conf" "/etc/minios/minios.conf"
+                information "The media has a newer minios.conf. Updating system configuration."
+                cp -fp "$MEDIA/minios.conf" "/etc/minios/minios.conf" && information "System configuration updated with media version." || error "Failed to update system configuration."
             elif [ "$MEDIA/minios.conf" -ot "/etc/minios/minios.conf" ]; then
-                cp -fp "/etc/minios/minios.conf" "$MEDIA/minios.conf"
+                information "The system has a newer minios.conf. Updating media configuration."
+                cp -fp "/etc/minios/minios.conf" "$MEDIA/minios.conf" && information "Media configuration updated with system version." || error "Failed to update media configuration."
             fi
-        elif [ -f "$MEDIA/minios.conf" ]; then
-            cp -fp "$MEDIA/minios.conf" "/etc/minios/minios.conf"
-        elif [ -f "/etc/minios/minios.conf" ]; then
-            cp -fp "/etc/minios/minios.conf" "$MEDIA/minios.conf"
+        else
+            [ -f "$MEDIA/minios.conf" ] && information "Copying minios.conf from media to system" && cp -fp "$MEDIA/minios.conf" "/etc/minios/minios.conf" && information "minios.conf copied successfully." || error "Failed to copy minios.conf."
+            [ -f "/etc/minios/minios.conf" ] && information "Copying minios.conf from system to media" && cp -fp "/etc/minios/minios.conf" "$MEDIA/minios.conf" && information "minios.conf copied successfully." || error "Failed to copy minios.conf."
         fi
-        if [ -z "$SSH_KEY" ]; then
-            SSH_KEY=$(read_config_value "/etc/minios/minios.conf" SSH_KEY)
-            if [ -z "$SSH_KEY" ]; then
-                SSH_KEY="authorized_keys"
-            fi
-        fi
-        if [ ! -d "/root/.ssh" ]; then
-            mkdir /root/.ssh
-            chmod 700 /root/.ssh
-        fi
+
+        # SSH key synchronization
+        SSH_KEY="${SSH_KEY:-$(read_config_value "/etc/minios/minios.conf" SSH_KEY)}"
+        SSH_KEY="${SSH_KEY:-authorized_keys}"
+        information "Using SSH key configuration: $SSH_KEY"
+
         if [ -f "$MEDIA/$SSH_KEY" ] && [ -f "/root/.ssh/authorized_keys" ]; then
             if [ "$MEDIA/$SSH_KEY" -nt "/root/.ssh/authorized_keys" ]; then
-                cp -fp "$MEDIA/$SSH_KEY" "/root/.ssh/authorized_keys"
-                chmod 600 "/root/.ssh/authorized_keys"
+                information "Media has a newer SSH key. Updating system SSH key."
+                cp -fp "$MEDIA/$SSH_KEY" "/root/.ssh/authorized_keys" && chmod 600 "/root/.ssh/authorized_keys" && information "System SSH key updated successfully." || error "Failed to update system SSH key."
             elif [ "$MEDIA/$SSH_KEY" -ot "/root/.ssh/authorized_keys" ]; then
-                cp -fp "/root/.ssh/authorized_keys" "$MEDIA/$SSH_KEY"
+                information "System has a newer SSH key. Updating media SSH key."
+                cp -fp "/root/.ssh/authorized_keys" "$MEDIA/$SSH_KEY" && information "Media SSH key updated successfully." || error "Failed to update media SSH key."
             fi
-        elif [ -f "$MEDIA/$SSH_KEY" ]; then
-            cp -fp "$MEDIA/$SSH_KEY" "/root/.ssh/authorized_keys"
-            chmod 600 "/root/.ssh/authorized_keys"
-        elif [ -f "/root/.ssh/authorized_keys" ]; then
-            cp -fp "/root/.ssh/authorized_keys" "$MEDIA/$SSH_KEY"
+        else
+            [ -f "$MEDIA/$SSH_KEY" ] && information "Copying SSH key from media to system" && cp -fp "$MEDIA/$SSH_KEY" "/root/.ssh/authorized_keys" && chmod 600 "/root/.ssh/authorized_keys" && information "SSH key copied successfully." || error "Failed to copy SSH key from media."
+            [ -f "/root/.ssh/authorized_keys" ] && information "Copying SSH key from system to media" && cp -fp "/root/.ssh/authorized_keys" "$MEDIA/$SSH_KEY" && information "SSH key copied successfully." || error "Failed to copy SSH key from system."
         fi
-    fi
-fi
-if [ "$WRITABLE" = "true" ]; then
-    if [ -f "/etc/minios/minios.conf" ]; then
-        cp -fp "/etc/minios/minios.conf" "$MEDIA/minios.conf"
-    fi
-    if [ -f "/root/.ssh/authorized_keys" ]; then
-        cp -fp "/root/.ssh/authorized_keys" "$MEDIA/$SSH_KEY"
+    else
+        error "Media directory does not exist: $MEDIA"
     fi
 fi
 
 # Copying bootloader configuration files to the system
-if [ -f "$MEDIA/boot/grub/grub.cfg" ]; then
-    cp -fp "$MEDIA/boot/grub/grub.cfg" "/etc/minios/grub.cfg"
-fi
-cp -fp "$MEDIA/boot/syslinux.cfg" "/etc/minios/syslinux.cfg"
+information "Copying bootloader configuration files."
+[ -f "$MEDIA/boot/grub/grub.cfg" ] && cp -fp "$MEDIA/boot/grub/grub.cfg" "/etc/minios/grub.cfg" && information "GRUB configuration copied successfully." || error "Failed to copy GRUB configuration."
+cp -fp "$MEDIA/boot/syslinux.cfg" "/etc/minios/syslinux.cfg" && information "Syslinux configuration copied successfully." || error "Failed to copy Syslinux configuration."
 
-echo "=====> Original /etc/minios/minios.conf configuration file contents:"
+# Display configuration and kernel parameter overrides
+information "Original /etc/minios/minios.conf configuration file contents:"
 cat "/etc/minios/minios.conf"
 echo ""
-echo "=====> Current values:"
-echo "USER_NAME: $USER_NAME"
-echo "USER_PASSWORD: $USER_PASSWORD"
-echo "ROOT_PASSWORD: $ROOT_PASSWORD"
-echo "HOST_NAME: $HOST_NAME"
-echo "DEFAULT_TARGET: $DEFAULT_TARGET"
-echo "SSH_KEY: $SSH_KEY"
-echo "CLOUD: $CLOUD"
-echo "SCRIPTS: $SCRIPTS"
-echo "HIDE_CREDENTIALS: $HIDE_CREDENTIALS"
-echo "AUTOLOGIN: $AUTOLOGIN"
-echo "LINK_USER_DIRS: $LINK_USER_DIRS"
-echo "SYSTEM_TYPE: $SYSTEM_TYPE"
+information "Current values overridden by kernel parameters:"
+[ -n "$USER_NAME" ] && echo "USER_NAME=$USER_NAME"
+[ -n "$USER_PASSWORD" ] && echo "USER_PASSWORD=$USER_PASSWORD"
+[ -n "$ROOT_PASSWORD" ] && echo "ROOT_PASSWORD=$ROOT_PASSWORD"
+[ -n "$HOST_NAME" ] && echo "HOST_NAME=$HOST_NAME"
+[ -n "$DEFAULT_TARGET" ] && echo "DEFAULT_TARGET=$DEFAULT_TARGET"
+[ -n "$SSH_KEY" ] && echo "SSH_KEY=$SSH_KEY"
+[ -n "$CLOUD" ] && echo "CLOUD=$CLOUD"
+[ -n "$SCRIPTS" ] && echo "SCRIPTS=$SCRIPTS"
+[ -n "$HIDE_CREDENTIALS" ] && echo "HIDE_CREDENTIALS=$HIDE_CREDENTIALS"
+[ -n "$AUTOLOGIN" ] && echo "AUTOLOGIN=$AUTOLOGIN"
+[ -n "$LINK_USER_DIRS" ] && echo "LINK_USER_DIRS=$LINK_USER_DIRS"
+[ -n "$SYSTEM_TYPE" ] && echo "SYSTEM_TYPE=$SYSTEM_TYPE"
+[ -n "$ELEVATION_PASSWORD_REQUIRED" ] && echo "ELEVATION_PASSWORD_REQUIRED=$ELEVATION_PASSWORD_REQUIRED"
 echo ""
 
 cat <<EOF >/etc/issue
@@ -241,97 +246,141 @@ declare -A VARIABLES_DEFAULTS=(
     ["AUTOLOGIN"]="true"
     ["LINK_USER_DIRS"]="false"
     ["SYSTEM_TYPE"]="classic"
+    ["ELEVATION_PASSWORD_REQUIRED"]="false"
 )
+
+declare -A VALIDATION_RULES=(
+    ["DEFAULT_TARGET"]="^(graphical|multi-user|rescue|emergency)$"
+    ["SYSTEM_TYPE"]="^(classic|puzzle)$"
+    ["CLOUD"]="^(true|false)$"
+    ["SCRIPTS"]="^(true|false)$"
+    ["HIDE_CREDENTIALS"]="^(true|false)$"
+    ["AUTOLOGIN"]="^(true|false)$"
+    ["LINK_USER_DIRS"]="^(true|false)$"
+    ["ELEVATION_PASSWORD_REQUIRED"]="^(true|false)$"
+)
+
+information "Checking the set values for errors..."
+
 for VAR_NAME in "${!VARIABLES_DEFAULTS[@]}"; do
     DEFAULT_VALUE="${VARIABLES_DEFAULTS[$VAR_NAME]}"
-    if [ -z "${!VAR_NAME}" ]; then
+    ORIGINAL_VALUE="${!VAR_NAME}"
+
+    if [ -z "$ORIGINAL_VALUE" ]; then
+        information "$VAR_NAME is not set, checking configuration file."
         read_config "/etc/minios/minios.conf" "$VAR_NAME"
-        if [ -z "${!VAR_NAME}" ]; then
+        ORIGINAL_VALUE="${!VAR_NAME}"
+        if [ -z "$ORIGINAL_VALUE" ]; then
             declare "$VAR_NAME=$DEFAULT_VALUE"
+            information "$VAR_NAME was not set in the configuration file. Using default value: $DEFAULT_VALUE"
+        else
+            information "$VAR_NAME found in configuration file: $ORIGINAL_VALUE"
         fi
     fi
-done
-if [[ ! "$DEFAULT_TARGET" =~ ^(graphical|multi-user|rescue|emergency)$ ]]; then
-    DEFAULT_TARGET="${VARIABLES_DEFAULTS[DEFAULT_TARGET]}"
-fi
-if [[ ! "$SYSTEM_TYPE" =~ ^(classic|puzzle)$ ]]; then
-    SYSTEM_TYPE="${VARIABLES_DEFAULTS[SYSTEM_TYPE]}"
-fi
-if [[ ! "$CLOUD" =~ ^(true|false)$ ]]; then
-    CLOUD="${VARIABLES_DEFAULTS[CLOUD]}"
-fi
-if [[ ! "$SCRIPTS" =~ ^(true|false)$ ]]; then
-    SCRIPTS="${VARIABLES_DEFAULTS[SCRIPTS]}"
-fi
-if [[ ! "$HIDE_CREDENTIALS" =~ ^(true|false)$ ]]; then
-    HIDE_CREDENTIALS="${VARIABLES_DEFAULTS[HIDE_CREDENTIALS]}"
-fi
-if [[ ! "$AUTOLOGIN" =~ ^(true|false)$ ]]; then
-    AUTOLOGIN="${VARIABLES_DEFAULTS[AUTOLOGIN]}"
-fi
-if [[ ! "$LINK_USER_DIRS" =~ ^(true|false)$ ]]; then
-    LINK_USER_DIRS="${VARIABLES_DEFAULTS[LINK_USER_DIRS]}"
-fi
 
-# Configuring the system to operate in 'puzzle' mode.
+    if [[ -n "${VALIDATION_RULES[$VAR_NAME]}" && ! "${!VAR_NAME}" =~ ${VALIDATION_RULES[$VAR_NAME]} ]]; then
+        warning "$VAR_NAME has an invalid value. Reverting to default: $DEFAULT_VALUE"
+        declare "$VAR_NAME=$DEFAULT_VALUE"
+    fi
+
+    if [ "$ORIGINAL_VALUE" != "${!VAR_NAME}" ]; then
+        information "$VAR_NAME was changed from $ORIGINAL_VALUE to: ${!VAR_NAME}"
+    fi
+done
+information "Variable checking completed."
+
+# Configuring the system to operate in 'puzzle' mode
 if [ "$SYSTEM_TYPE" = "puzzle" ]; then
+    information "Configuring the system to operate in 'puzzle' mode."
+
     if [ -x /usr/sbin/minios-update-users ]; then
+        information "Updating users with minios-update-users"
         minios-update-users "$BUNDLES" "$CHANGES" >/var/log/minios/minios-update-users.output 2>&1
     fi
+
     if [ -x /usr/sbin/inios-update-cache ]; then
+        information "Updating cache with minios-update-cache"
         minios-update-cache "$BUNDLES" >/var/log/minios/minios-update-cache.output 2>&1 &
     fi
+
     if [ -x /usr/sbin/minios-update-dpkg ]; then
+        information "Updating dpkg with minios-update-dpkg"
         minios-update-dpkg "$BUNDLES" "$CHANGES" >/var/log/minios/minios-update-dpkg.output 2>&1 &
     fi
 fi
 
-# Setting up the 'root' user.
+# Setting up the 'root' user
 if [ ! -f /var/.system_configured ]; then
-    cp -rT /etc/skel /root
+    information "Setting up 'root' user environment."
+    cp -rT /etc/skel /root || error "Failed to copy skeleton files to /root."
+
     if [ -d /root ]; then
         for DIR in Desktop Documents Downloads Music Pictures Public Templates Videos; do
-            mkdir -p "/root/$DIR"
+            mkdir -p "/root/$DIR" || error "Failed to create /root/$DIR"
         done
     fi
-    chown 0:0 /root
-    chown -R 0:0 /root
-    sed -i 's,01;32m,01;31m,g' /root/.bashrc
+
+    chown 0:0 /root || error "Failed to set ownership for /root"
+    chown -R 0:0 /root || error "Failed to set ownership recursively for /root"
+    sed -i 's,01;32m,01;31m,g' /root/.bashrc || error "Failed to update /root/.bashrc"
+    information "'root' user setup complete."
+else
+    information "'root' user already configured."
 fi
 
-# Setting up x11vnc password. 
+# Setting up x11vnc password
 if [ -f /usr/bin/x11vnc ]; then
-    x11vnc -storepasswd "$ROOT_PASSWORD" /etc/vncpassword
+    information "Setting x11vnc password."
+    x11vnc -storepasswd "$ROOT_PASSWORD" /etc/vncpassword || error "Failed to set x11vnc password."
+else
+    warning "x11vnc not found. Skipping x11vnc password setup."
 fi
 
-# Setting up the regular user.
+# Setting up the regular user
 read_config "$CONFIG" USER_SETUP
 if [ "$USER_SETUP" = "systemd" ]; then
+    information "Configuring the system with systemd."
+
     if [ "$CLOUD" != "true" ]; then
         if [ "$USER_NAME" != "root" ]; then
-            user_setup "$USER_NAME" "$MEDIA" "$LINK_USER_DIRS" "$WRITABLE"
-            change_user "$USER_NAME" "$CURRENT_USER_NAME" "$CURRENT_USER_GROUP"
+            information "Setting up regular user: $USER_NAME"
+            user_setup "$USER_NAME" "$MEDIA" "$LINK_USER_DIRS" "$WRITABLE" || error "Failed to set up user: $USER_NAME"
+            change_user "$USER_NAME" "$CURRENT_USER_NAME" "$CURRENT_USER_GROUP" || error "Failed to change user: $USER_NAME"
         elif [ "$DESKTOP_ENVIRONMENT" = "flux" ]; then
-            user_setup "guest" "$MEDIA"
+            information "Setting up guest user in fluxbox environment."
+            user_setup "guest" "$MEDIA" || error "Failed to set up guest user."
         fi
     else
         USER_NAME="root"
         DEFAULT_TARGET="multi-user"
+        information "Cloud mode enabled. Switching to 'root' user and 'multi-user' target."
     fi
 fi
 
 # Setting up user passwords
-echo root:"$ROOT_PASSWORD" | chpasswd
+information "Setting user passwords."
+echo root:"$ROOT_PASSWORD" | chpasswd || error "Failed to set root password."
 if [ "$USER_NAME" != "root" ]; then
-    echo "$USER_NAME":"$USER_PASSWORD" | chpasswd
+    echo "$USER_NAME":"$USER_PASSWORD" | chpasswd || error "Failed to set password for user: $USER_NAME."
 fi
 
+# Configuring sudoers for non-root users
 if [ "$USER_NAME" != "root" ]; then
+    information "Configuring sudo for user: $USER_NAME"
+    read_config "$CONFIG" ELEVATION_PASSWORD_REQUIRED
+    if [ "$ELEVATION_PASSWORD_REQUIRED" = "true" ]; then
+        SUDO_PERMISSIONS="ALL" # Requires password for sudo actions
+    else
+        SUDO_PERMISSIONS="NOPASSWD:ALL" # No password required for sudo actions
+    fi
     cat <<EOF >/etc/sudoers.d/90-minios
-# live user is default user in minios.
-# It needs passwordless sudo functionality.
-$USER_NAME ALL=(ALL) NOPASSWD:ALL
+# Granting sudo permissions for $USER_NAME based on MiniOS configuration.
+
+$USER_NAME ALL=(ALL) $SUDO_PERMISSIONS
 EOF
+    information "Sudo configuration completed for $USER_NAME."
+else
+    information "No sudo configuration required for 'root' user."
 fi
 
 if [ "$HIDE_CREDENTIALS" != "true" ]; then
@@ -403,19 +452,24 @@ EOF
     fi
 fi
 
-echo "=====> Making changes to the configuration file..."
-update_config "/etc/minios/minios.conf" USER_NAME USER_PASSWORD ROOT_PASSWORD HOST_NAME DEFAULT_TARGET ENABLE_SERVICES DISABLE_SERVICES SSH_KEY SCRIPTS AUTOLOGIN LINK_USER_DIRS HIDE_CREDENTIALS SYSTEM_TYPE EXPORT_LOGS
-echo ""
-echo "=====> New /etc/minios/minios.conf configuration file contents:"
-cat "/etc/minios/minios.conf"
+# Updating the configuration file
+information "Making changes to the configuration file..."
+update_config "/etc/minios/minios.conf" USER_NAME USER_PASSWORD ROOT_PASSWORD HOST_NAME DEFAULT_TARGET ENABLE_SERVICES DISABLE_SERVICES SSH_KEY SCRIPTS AUTOLOGIN LINK_USER_DIRS HIDE_CREDENTIALS SYSTEM_TYPE EXPORT_LOGS ELEVATION_PASSWORD_REQUIRED || error "Failed to update the configuration file."
+information "Configuration file updated."
+
+# Showing the new configuration file
+information "New /etc/minios/minios.conf configuration file contents:"
+cat "/etc/minios/minios.conf" || error "Failed to display the configuration file."
 echo ""
 
-# If newer kernels are used, then xorg will not run on hyper-v without this configuration file.
-read_config "$CONFIG" DISTRIBUTION DISTRIBUTION_TYPE KERNEL_BPO KERNEL_AUFS
+# Checking the system environment
+information "Checking system distribution and kernel configuration..."
+read_config "$CONFIG" DISTRIBUTION DISTRIBUTION_TYPE KERNEL_BPO KERNEL_AUFS || error "Failed to read the system configuration."
 if ([ "$DISTRIBUTION" = "bookworm" ] || [ "$DISTRIBUTION" = "sid" ]) || ([ "$DISTRIBUTION_TYPE" = "ubuntu" ] && [ "$KERNEL_AUFS" = "true" ]); then
-    if [ "$(virt-what)" = "hyperv" ]; then
+    if is_virtual "Hyper-V"; then
+        information "Running on Hyper-V. Configuring X11 for compatibility..."
         if [ ! -d /etc/X11/xorg.conf.d ]; then
-            mkdir -p /etc/X11/xorg.conf.d
+            mkdir -p /etc/X11/xorg.conf.d || error "Failed to create directory /etc/X11/xorg.conf.d."
         fi
         cat <<EOF >/etc/X11/xorg.conf.d/30-hyperv.conf
 Section "Device"
@@ -424,73 +478,92 @@ Section "Device"
 EndSection
 
 EOF
+        information "X11 configuration for Hyper-V completed."
+    elif [ -f /etc/X11/xorg.conf.d/30-hyperv.conf ]; then
+        rm -f /etc/X11/xorg.conf.d/30-hyperv.conf || error "Failed to remove /etc/X11/xorg.conf.d/30-hyperv.conf."
+        information "Removed Hyper-V X11 configuration file."
     fi
 fi
 
+# Configuring autologin
+information "Configuring autologin settings..."
 if [ "$AUTOLOGIN" = "true" ]; then
     if [ -f /etc/default/nodm ]; then
-        sed -i -e "/NODM_USER=/s/=.*/=\"$USER_NAME\"/" /etc/default/nodm
+        sed -i -e "/NODM_USER=/s/=.*/=\"$USER_NAME\"/" /etc/default/nodm || error "Failed to configure nodm autologin."
     fi
     if [ -f /etc/slim.conf ]; then
-        sed -i -e "/default_user /s/ .*/ $USER_NAME/" /etc/slim.conf
-        sed -i -e "/auto_login /s/ .*/ yes/" /etc/slim.conf
+        sed -i -e "/default_user /s/ .*/ $USER_NAME/" /etc/slim.conf || error "Failed to configure slim autologin."
+        sed -i -e "/auto_login /s/ .*/ yes/" /etc/slim.conf || error "Failed to configure slim auto_login."
     fi
     if [ -f /etc/lightdm/lightdm.conf ]; then
-        sed -i "s/#autologin-user=/autologin-user=/g" /etc/lightdm/lightdm.conf
-        sed -i -e "/autologin-user=/s/=.*/=$USER_NAME/" /etc/lightdm/lightdm.conf
-        sed -i "s/#autologin-user-timeout=/autologin-user-timeout=/g" /etc/lightdm/lightdm.conf
-        sed -i -e "/autologin-user-timeout=/s/=.*/=0/" /etc/lightdm/lightdm.conf
+        sed -i "s/#autologin-user=/autologin-user=/" /etc/lightdm/lightdm.conf || error "Failed to configure lightdm autologin-user."
+        sed -i -e "/autologin-user=/s/=.*/=$USER_NAME/" /etc/lightdm/lightdm.conf || error "Failed to set autologin-user."
+        sed -i "s/#autologin-user-timeout=/autologin-user-timeout=/" /etc/lightdm/lightdm.conf || error "Failed to configure lightdm autologin-user-timeout."
+        sed -i -e "/autologin-user-timeout=/s/=.*/=0/" /etc/lightdm/lightdm.conf || error "Failed to set autologin-user-timeout to 0."
     fi
 else
+    information "Disabling autologin..."
     if [ -f /etc/default/nodm ]; then
-        sed -i -e "/NODM_USER=/s/=.*/=\"\"/" /etc/default/nodm
+        sed -i -e "/NODM_USER=/s/=.*/=\"\"/" /etc/default/nodm || error "Failed to disable nodm autologin."
     fi
     if [ -f /etc/slim.conf ]; then
-        sed -i -e "/default_user /s/ .*/ /" /etc/slim.conf
-        sed -i -e "/auto_login /s/ .*/ no/" /etc/slim.conf
+        sed -i -e "/default_user /s/ .*/ /" /etc/slim.conf || error "Failed to clear slim default user."
+        sed -i -e "/auto_login /s/ .*/ no/" /etc/slim.conf || error "Failed to disable slim auto_login."
     fi
     if [ -f /etc/lightdm/lightdm.conf ]; then
         if ! grep -q "#autologin-user=" /etc/lightdm/lightdm.conf; then
-            sed -i "s/autologin-user=/#autologin-user=/g" /etc/lightdm/lightdm.conf
+            sed -i "s/autologin-user=/#autologin-user=/" /etc/lightdm/lightdm.conf || error "Failed to comment out lightdm autologin-user."
         fi
         if ! grep -q "#autologin-user-timeout=" /etc/lightdm/lightdm.conf; then
-            sed -i "s/autologin-user-timeout=/#autologin-user-timeout=/g" /etc/lightdm/lightdm.conf
+            sed -i "s/autologin-user-timeout=/#autologin-user-timeout=/" /etc/lightdm/lightdm.conf || error "Failed to comment out lightdm autologin-user-timeout."
         fi
     fi
+    information "Autologin disabled."
 fi
 
 ##### Software configuration #####
-# Gnome Software fix
-mkdir -p /var/cache/swcatalog/cache
+information "Configuring software settings..."
 
+# Gnome Software fix
+mkdir -p /var/cache/swcatalog/cache || error "Failed to create Gnome Software cache directory."
+
+# System setup complete marker
 if [ ! -f /var/.system_configured ]; then
-    echo "MiniOS setup is completed." >/var/.system_configured
+    information "Marking system setup as completed."
+    echo "MiniOS setup is completed." >/var/.system_configured || error "Failed to write system setup marker."
 fi
 
 set +x
 
-read_config "/etc/minios/minios.conf" EXPORT_LOGS
+# Exporting logs if enabled
+read_config "/etc/minios/minios.conf" EXPORT_LOGS || error "Failed to read EXPORT_LOGS configuration."
 DATE=$(date +%Y%m%d)
 TIME=$(date +%H%M%S)
 if [ "$EXPORT_LOGS" = "true" ]; then
+    information "Exporting logs..."
     if [ "$WRITABLE" = "true" ]; then
         if [ ! -d "$MEDIA/log/$DATE" ]; then
-            mkdir -p "$MEDIA/log/$DATE"
+            mkdir -p "$MEDIA/log/$DATE" || error "Failed to create log export directory."
         fi
         for FILE in /var/log/minios/*; do
             if [ ! -d "$FILE" ] && [[ ! $(basename "$FILE") == boot* ]]; then
                 FILE=$(basename "$FILE")
                 NEW_FILENAME="${FILE%.*}-$TIME.${FILE##*.}"
-                cp -fp "/var/log/minios/$FILE" "$MEDIA/log/$DATE/$NEW_FILENAME"
+                cp -fp "/var/log/minios/$FILE" "$MEDIA/log/$DATE/$NEW_FILENAME" || error "Failed to copy log file: $FILE."
             fi
         done
-        mkdir -p "$MEDIA/log/$DATE/users"
+        mkdir -p "$MEDIA/log/$DATE/users" || error "Failed to create user log export directory."
         for FILE in /var/log/minios/users/*; do
             if [ ! -d "$FILE" ]; then
                 FILE=$(basename "$FILE")
                 NEW_FILENAME="${FILE%.*}-$TIME.${FILE##*.}"
-                cp -fp "/var/log/minios/users/$FILE" "$MEDIA/log/$DATE/users/$NEW_FILENAME"
+                cp -fp "/var/log/minios/users/$FILE" "$MEDIA/log/$DATE/users/$NEW_FILENAME" || error "Failed to copy user log file: $FILE."
             fi
         done
+        information "Logs exported successfully."
+    else
+        warning "Writable mode is disabled. Skipping log export."
     fi
+else
+    information "Log export is disabled."
 fi

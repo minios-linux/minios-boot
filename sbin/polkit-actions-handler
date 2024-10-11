@@ -1,17 +1,71 @@
 #!/bin/bash
 
-# Directory to monitor
-DIR="/usr/share/polkit-1/actions"
+# Load MiniOS configuration
+CONFIG_FILE="/etc/minios/minios.conf"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Configuration file $CONFIG_FILE not found. Exiting."
+    exit 1
+fi
+. "$CONFIG_FILE"
 
-# Loop over all files in the directory
-for FILE in "$DIR"/*; do
-    # Check if the FILE is a regular file and if it is, process it
-    if [ -f "$FILE" ]; then
-        # Use sed to replace any <allow_active> value with <allow_active>yes</allow_active> in the FILE
-        if ! sed -i 's/<allow_active>.*<\/allow_active>/<allow_active>yes<\/allow_active>/g' "$FILE"; then
-            echo "Error modifying file $FILE."
+# Define the directory containing polkit actions and backup locations
+POLKIT_ACTIONS_DIR="/usr/share/polkit-1/actions"
+BACKUP_DIR="/var/backups/polkit-actions"
+
+# Create backup directory if it doesn't exist
+mkdir -p "$BACKUP_DIR"
+
+# Function to restore original polkit values from backup
+restore_original_polkit_values() {
+    for BACKUP_FILE in "$BACKUP_DIR"/*.bak; do
+        ORIGINAL_FILE="$POLKIT_ACTIONS_DIR/$(basename "$BACKUP_FILE" .bak)"
+        if [ -f "$BACKUP_FILE" ] && [ -f "$ORIGINAL_FILE" ]; then
+            cp "$BACKUP_FILE" "$ORIGINAL_FILE" || {
+                echo "Failed to restore $ORIGINAL_FILE from backup."
+                continue
+            }
+            echo "Restored original values in $ORIGINAL_FILE."
         fi
-    fi
-done
+    done
+}
 
-echo "The $DIR directory has been checked, and necessary files have been updated."
+# Function to backup and update polkit values for all <allow_active> occurrences
+backup_and_update_polkit_values() {
+    for POLICY_FILE in "$POLKIT_ACTIONS_DIR"/*; do
+        if [ -f "$POLICY_FILE" ]; then
+            BACKUP_FILE="$BACKUP_DIR/$(basename "$POLICY_FILE").bak"
+
+            # Search all occurrences of <allow_active> and backup file only if changes will be made
+            if grep -q "<allow_active>" "$POLICY_FILE"; then
+                # Create backup if it doesn't exist yet
+                if [ ! -f "$BACKUP_FILE" ]; then
+                    cp "$POLICY_FILE" "$BACKUP_FILE" || {
+                        echo "Failed to create backup for $POLICY_FILE."
+                        continue
+                    }
+                    echo "Created backup for $POLICY_FILE."
+                fi
+
+                # Replace all occurrences of <allow_active> with the target value
+                if ! sed -i "s/<allow_active>.*<\/allow_active>/<allow_active>$POLKIT_ALLOW_ACTION<\/allow_active>/g" "$POLICY_FILE"; then
+                    echo "Error modifying $POLICY_FILE."
+                else
+                    echo "Updated $POLICY_FILE with polkit policy: $POLKIT_ALLOW_ACTION."
+                fi
+            fi
+        fi
+    done
+}
+
+# Backup and update polkit or restore original values
+if [ "$ELEVATION_PASSWORD_REQUIRED" = "true" ]; then
+    # Restore original polkit values
+    restore_original_polkit_values
+else
+    # Backup and update only changed polkit values
+    POLKIT_ALLOW_ACTION="yes"
+    backup_and_update_polkit_values
+fi
+
+echo "Polkit actions in $POLKIT_ACTIONS_DIR have been updated."
+echo "Backup files (if any) are stored in $BACKUP_DIR."
