@@ -367,7 +367,7 @@ fi
 # Configuring sudoers for non-root users
 if [ "$USER_NAME" != "root" ]; then
     information "Configuring sudo for user: $USER_NAME"
-    read_config "$CONFIG" ELEVATION_PASSWORD_REQUIRED
+    read_config "/etc/minios/minios.conf" ELEVATION_PASSWORD_REQUIRED
     if [ "$ELEVATION_PASSWORD_REQUIRED" = "true" ]; then
         SUDO_PERMISSIONS="ALL" # Requires password for sudo actions
     else
