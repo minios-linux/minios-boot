@@ -21,7 +21,9 @@ set -x
 BEXT="sb"
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 CMDLINE=$(cat /proc/cmdline)
-CONFIG="/etc/minios/config"
+GENERAL_CONF="/etc/minios/general.conf"
+BUILD_CONF="/etc/minios/build.conf"
+
 read_cmdline $CMDLINE
 if [ "$STATIC_PROFILES" = "true" ]; then
     exit 0
@@ -174,8 +176,8 @@ cat <<EOF >/etc/issue
                         Thank you for using MiniOS.
 EOF
 
-if [ -f "$CONFIG" ]; then
-    read_config "$CONFIG" DISTRIBUTION DESKTOP_ENVIRONMENT PACKAGE_VARIANT
+if [ -f "$BUILD_CONF" ]; then
+    read_config "$BUILD_CONF" DISTRIBUTION DESKTOP_ENVIRONMENT PACKAGE_VARIANT
     case $DISTRIBUTION in
     stretch | buster | bullseye | bookworm | kali-rolling | sid | orel)
         DISTRIBUTION_TYPE="debian"
@@ -337,7 +339,7 @@ else
 fi
 
 # Setting up the regular user
-read_config "$CONFIG" USER_SETUP
+read_config "$GENERAL_CONF" USER_SETUP
 if [ "$USER_SETUP" = "systemd" ]; then
     information "Configuring the system with systemd."
 
@@ -464,7 +466,7 @@ echo ""
 
 # Checking the system environment
 information "Checking system distribution and kernel configuration..."
-read_config "$CONFIG" DISTRIBUTION DISTRIBUTION_TYPE KERNEL_BPO KERNEL_AUFS || error "Failed to read the system configuration."
+read_config "$BUILD_CONF" DISTRIBUTION DISTRIBUTION_TYPE KERNEL_BPO KERNEL_AUFS || error "Failed to read the system configuration."
 if ([ "$DISTRIBUTION" = "bookworm" ] || [ "$DISTRIBUTION" = "sid" ]) || ([ "$DISTRIBUTION_TYPE" = "ubuntu" ] && [ "$KERNEL_AUFS" = "true" ]); then
     if is_virtual "Hyper-V"; then
         information "Running on Hyper-V. Configuring X11 for compatibility..."
