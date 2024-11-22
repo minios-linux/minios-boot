@@ -176,49 +176,24 @@ cat <<EOF >/etc/issue
                         Thank you for using MiniOS.
 EOF
 
-if [ -f "$BUILD_CONF" ]; then
-    read_config "$BUILD_CONF" DISTRIBUTION DESKTOP_ENVIRONMENT PACKAGE_VARIANT
-    case $DISTRIBUTION in
-    stretch | buster | bullseye | bookworm | kali-rolling | sid | orel)
-        DISTRIBUTION_TYPE="debian"
-        ;;
-    bionic | focal | jammy | noble)
-        DISTRIBUTION_TYPE="ubuntu"
-        ;;
-    *)
-        echo "Unknown distribution: $DISTRIBUTION"
-        exit 1
-        ;;
-    esac
-    if [ "$DISTRIBUTION_TYPE" = "ubuntu" ]; then
-        cat <<EOF >>/etc/issue
-                        Based on [1;38;5;214mUbuntu[0;29m.
-EOF
-    elif [ "$DISTRIBUTION_TYPE" = "debian" ] && [ "$DISTRIBUTION" = "kali-rolling" ]; then
-        cat <<EOF >>/etc/issue
-                        Based on [1;36mKali Linux[0;29m.
-EOF
-    elif [ "$DISTRIBUTION_TYPE" = "debian" ] && [ "$DISTRIBUTION" = "orel" ]; then
-        cat <<EOF >>/etc/issue
-                        Based on [1;34mAstra Linux[0;29m.
-EOF
-    elif [ "$DISTRIBUTION_TYPE" = "debian" ]; then
-        cat <<EOF >>/etc/issue
-                        Based on [1;31mDebian GNU/Linux[0;29m.
-EOF
-    else
-        cat <<EOF >>/etc/issue
-                        Based on [1;31mDebian GNU/Linux[0;29m.
-EOF
-    fi
-    if [ "$DESKTOP_ENVIRONMENT" = "flux" ]; then
-        cat <<EOF >>/etc/issue
-                        Powered by [1;32mSlax[0;29m.
-EOF
-    fi
-else
+read_config "/etc/os-release" ID
+
+if [ "$ID" = "debian" ]; then
     cat <<EOF >>/etc/issue
                         Based on [1;31mDebian GNU/Linux[0;29m.
+EOF
+elif [ "$ID" = "ubuntu" ]; then
+    cat <<EOF >>/etc/issue
+                        Based on [1;38;5;214mUbuntu[0;29m.
+EOF
+elif [ "$ID" = "kali" ]; then
+    cat <<EOF >>/etc/issue
+                        Based on [1;36mKali Linux[0;29m.
+EOF
+fi
+if dpkg -l | grep fluxbox-slax >/dev/null 2>&1; then
+    cat <<EOF >>/etc/issue
+                        Powered by [1;32mSlax[0;29m.
 EOF
 fi
 
@@ -339,8 +314,8 @@ else
 fi
 
 # Setting up the regular user
-read_config "$GENERAL_CONF" USER_SETUP
-if [ "$USER_SETUP" = "systemd" ]; then
+read_config "/etc/os-release" VERSION_CODENAME
+if [ "$VERSION_CODENAME" != "bionic" ]; then
     information "Configuring the system with systemd."
 
     if [ "$CLOUD" != "true" ]; then
@@ -466,8 +441,8 @@ echo ""
 
 # Checking the system environment
 information "Checking system distribution and kernel configuration..."
-read_config "$BUILD_CONF" DISTRIBUTION DISTRIBUTION_TYPE KERNEL_BPO KERNEL_AUFS || error "Failed to read the system configuration."
-if ([ "$DISTRIBUTION" = "bookworm" ] || [ "$DISTRIBUTION" = "sid" ]) || ([ "$DISTRIBUTION_TYPE" = "ubuntu" ] && [ "$KERNEL_AUFS" = "true" ]); then
+read_config "/etc/os-release" VERSION_CODENAME ID || error "Failed to read the system configuration."
+if ([ "$VERSION_CODENAME" = "bookworm" ] || [ "$VERSION_CODENAME" = "sid" ]) || ([ "$ID" = "ubuntu" ] && cat /proc/filesystems | grep aufs >/dev/null 2>&1); then
     if is_virtual "Hyper-V"; then
         information "Running on Hyper-V. Configuring X11 for compatibility..."
         if [ ! -d /etc/X11/xorg.conf.d ]; then
