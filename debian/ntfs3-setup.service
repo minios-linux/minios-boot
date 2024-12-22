@@ -1,0 +1,13 @@
+[Unit]
+Description=Manage NTFS3 kernel module and udev rules
+Before=basic.target
+After=local-fs.target systemd-tmpfiles-setup.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=-/bin/sh -c '[ -f /usr/lib/modules/$(uname -r)/kernel/fs/ntfs3/ntfs3.ko ] && echo "SUBSYSTEM==\\"block\\", ENV{ID_FS_TYPE}==\\"ntfs\\", ENV{ID_FS_TYPE}=\\"ntfs3\\"" > /etc/udev/rules.d/ntfs3.rules || rm -f /etc/udev/rules.d/ntfs3.rules'
+
+[Install]
+WantedBy=basic.target

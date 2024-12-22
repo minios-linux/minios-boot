@@ -8,3 +8,4 @@ TimeoutStartSec=60
 
 [Install]
 RequiredBy=polkit-actions-monitor.path
+WantedBy=multi-user.target
