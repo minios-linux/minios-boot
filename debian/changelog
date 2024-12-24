@@ -1,3 +1,11 @@
+minios-boot (1.2) unstable; urgency=medium
+
+  * Fixed a bug in minios-startup that caused minios-installer to fail to install
+  the system due to missing grub and syslinux configs in /etc/minios when copying
+  the system to RAM.
+
+ -- crims0n <crims0n@minios.dev>  Tue, 24 Dec 2024 16:24:12 +0300
+
 minios-boot (1.1) unstable; urgency=medium
 
   * Moved from init to systemd: ntfs3 configuration, polkit configuration.
