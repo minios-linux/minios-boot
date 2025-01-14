@@ -1,3 +1,9 @@
+minios-boot (1.2.1) unstable; urgency=medium
+
+  * minios-script-launcher.service is now enabled by default
+
+ -- crims0n <crims0n@minios.dev>  Tue, 14 Jan 2025 12:53:33 +0300
+
 minios-boot (1.2) unstable; urgency=medium
 
   * Fixed a bug in minios-startup that caused minios-installer to fail to install
