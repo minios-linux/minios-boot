@@ -1,8 +1,6 @@
 #!/bin/bash
-#
 # Command line parsing script.
 # Author: crims0n <https://minios.dev>
-#
 
 . "/usr/lib/minios/libminioslive" || exit 1
 

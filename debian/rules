@@ -6,7 +6,7 @@
 override_dh_installsystemd:
 	dh_installsystemd --name=minios-startup minios-startup.service
 	dh_installsystemd --name=ntfs3-setup ntfs3-setup.service
-	dh_installsystemd --name=minios-script-launcher --no-enable minios-script-launcher.service
+	dh_installsystemd --name=minios-script-launcher minios-script-launcher.service
 	dh_installsystemd --name=minios-syncconfig minios-syncconfig.path
 	dh_installsystemd --name=minios-syncconfig minios-syncconfig.service
 	dh_installsystemd --name=ssh-keygen ssh-keygen.service

@@ -1,4 +1,5 @@
 #!/bin/bash
+# Author: crims0n <https://minios.dev>
 
 # Load MiniOS configuration
 CONFIG_FILE="/etc/minios/minios.conf"
