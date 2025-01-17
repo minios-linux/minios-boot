@@ -1,6 +1,12 @@
+minios-boot (1.2.2) unstable; urgency=medium
+
+  * Added support for the dkms module in ntfs3-setup.service.
+
+ -- crims0n <crims0n@minios.dev>  Fri, 17 Jan 2025 15:40:56 +0300
+
 minios-boot (1.2.1) unstable; urgency=medium
 
-  * minios-script-launcher.service is now enabled by default
+  * minios-script-launcher.service is now enabled by default.
 
  -- crims0n <crims0n@minios.dev>  Tue, 14 Jan 2025 12:53:33 +0300
 
