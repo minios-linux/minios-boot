@@ -216,6 +216,12 @@ declare -A VARIABLES_DEFAULTS=(
     ["LINK_USER_DIRS"]="false"
     ["SYSTEM_TYPE"]="classic"
     ["ELEVATION_PASSWORD_REQUIRED"]="false"
+    ["LOCALES"]="en_US.UTF-8"
+    ["TIMEZONE"]="Etc/UTC"
+    ["KEYBOARD_LAYOUTS"]="us"
+    ["KEYBOARD_MODEL"]="pc105"
+    ["KEYBOARD_OPTIONS"]=","
+    ["KEYBOARD_VARIANTS"]=""
 )
 
 declare -A VALIDATION_RULES=(
@@ -421,9 +427,100 @@ EOF
     fi
 fi
 
+information "Configuring system locales"
+if ! dpkg -l locales >/dev/null 2>&1 && ! dpkg -l locales-all >/dev/null 2>&1; then
+    warning "Locales packages not installed. Skipping locales configuration."
+else
+    LOCALES="${LOCALES:-$(read_config_value "/etc/minios/minios.conf" LOCALES)}"
+
+    IFS=',' read -ra LOCALE_LIST <<<"$LOCALES"
+    PRIMARY_LOCALE="${LOCALE_LIST[0]}"
+    ADDITIONAL_LOCALES="${LOCALE_LIST[@]:1}"
+
+    information "Setting primary locale to: $PRIMARY_LOCALE"
+    echo "LANG=$PRIMARY_LOCALE" >/etc/default/locale
+    [ -f /etc/locale.conf ] && echo "LANG=$PRIMARY_LOCALE" >/etc/locale.conf
+
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl set-environment "LANG=$PRIMARY_LOCALE"
+    fi
+
+    if [ -f /etc/locale.gen ]; then
+        information "Generating locales: ${LOCALE_LIST[*]}"
+        for locale in "${LOCALE_LIST[@]}"; do
+            charset=$(echo "$locale" | awk -F. '{print $2}')
+            [ -z "$charset" ] && charset="UTF-8"
+            sed -i -e "s/^# \($locale $charset\)/\1/" /etc/locale.gen
+        done
+        locale-gen >/dev/null 2>&1
+    fi
+
+    export LANG="$PRIMARY_LOCALE"
+    update-locale LANG="$PRIMARY_LOCALE" 2>/dev/null
+fi
+
+# Configuring system timezone
+information "Configuring system timezone"
+if ! dpkg -l tzdata >/dev/null 2>&1; then
+    warning "tzdata package not installed. Skipping timezone configuration."
+else
+    TIMEZONE="${TIMEZONE:-$(read_config_value "/etc/minios/minios.conf" TIMEZONE)}"
+
+    information "Setting timezone to: $TIMEZONE"
+
+    _AREA="$(echo ${TIMEZONE} | cut -f1 -d '/')"
+    _ZONE="$(echo ${TIMEZONE} | cut -f2 -d '/')"
+
+    if [ -n "${_AREA}" ] && [ -n "${_ZONE}" ]; then
+        echo "${_AREA}/${_ZONE}" >/etc/timezone
+        rm -f /etc/localtime
+        dpkg-reconfigure -f noninteractive -p critical tzdata >/dev/null 2>&1
+    else
+        warning "Invalid timezone format: $TIMEZONE. Using default UTC."
+        echo "Etc/UTC" >/etc/timezone
+        rm -f /etc/localtime
+        dpkg-reconfigure -f noninteractive -p critical tzdata >/dev/null 2>&1
+    fi
+fi
+
+# Configuring keyboard layout
+information "Configuring keyboard layout"
+if ! dpkg -l keyboard-configuration >/dev/null 2>&1; then
+    warning "keyboard-configuration package not installed. Skipping keyboard configuration."
+else
+    KEYBOARD_LAYOUTS="${KEYBOARD_LAYOUTS:-$(read_config_value "/etc/minios/minios.conf" KEYBOARD_LAYOUTS)}"
+    KEYBOARD_MODEL="${KEYBOARD_MODEL:-$(read_config_value "/etc/minios/minios.conf" KEYBOARD_MODEL)}"
+    KEYBOARD_OPTIONS="${KEYBOARD_OPTIONS:-$(read_config_value "/etc/minios/minios.conf" KEYBOARD_OPTIONS)}"
+    KEYBOARD_VARIANTS="${KEYBOARD_VARIANTS:-$(read_config_value "/etc/minios/minios.conf" KEYBOARD_VARIANTS)}"
+
+    information "Setting keyboard layout to: layouts=$KEYBOARD_LAYOUTS, model=$KEYBOARD_MODEL, options=$KEYBOARD_OPTIONS, variants=$KEYBOARD_VARIANTS"
+
+    rm -f /tmp/live-config.cfg
+
+    if [ -n "${KEYBOARD_LAYOUTS}" ]; then
+        echo "keyboard-configuration keyboard-configuration/layoutcode select ${KEYBOARD_LAYOUTS}" >>/tmp/live-config.cfg
+        sed -i -e "s|^XKBLAYOUT=.*$|XKBLAYOUT=\"${KEYBOARD_LAYOUTS}\"|" /etc/default/keyboard
+    fi
+
+    if [ -n "${KEYBOARD_MODEL}" ]; then
+        echo "keyboard-configuration keyboard-configuration/modelcode select ${KEYBOARD_MODEL}" >>/tmp/live-config.cfg
+        sed -i -e "s|^XKBMODEL=.*$|XKBMODEL=\"${KEYBOARD_MODEL}\"|" /etc/default/keyboard
+    fi
+
+    if [ -n "${KEYBOARD_OPTIONS}" ]; then
+        echo "keyboard-configuration keyboard-configuration/optionscode string ${KEYBOARD_OPTIONS}" >>/tmp/live-config.cfg
+        sed -i -e "s|^XKBOPTIONS=.*$|XKBOPTIONS=\"${KEYBOARD_OPTIONS}\"|" /etc/default/keyboard
+    fi
+
+    if [ -n "${KEYBOARD_VARIANTS}" ]; then
+        echo "keyboard-configuration keyboard-configuration/variantcode select ${KEYBOARD_VARIANTS}" >>/tmp/live-config.cfg
+        sed -i -e "s|^XKBVARIANT=.*$|XKBVARIANT=\"${KEYBOARD_VARIANTS}\"|" /etc/default/keyboard
+    fi
+fi
+
 # Updating the configuration file
 information "Making changes to the configuration file..."
-update_config "/etc/minios/minios.conf" USER_NAME USER_PASSWORD ROOT_PASSWORD HOST_NAME DEFAULT_TARGET ENABLE_SERVICES DISABLE_SERVICES SSH_KEY SCRIPTS AUTOLOGIN LINK_USER_DIRS HIDE_CREDENTIALS SYSTEM_TYPE EXPORT_LOGS ELEVATION_PASSWORD_REQUIRED || error "Failed to update the configuration file."
+update_config "/etc/minios/minios.conf" USER_NAME USER_PASSWORD ROOT_PASSWORD HOST_NAME DEFAULT_TARGET ENABLE_SERVICES DISABLE_SERVICES SSH_KEY SCRIPTS AUTOLOGIN LINK_USER_DIRS HIDE_CREDENTIALS SYSTEM_TYPE EXPORT_LOGS ELEVATION_PASSWORD_REQUIRED CLOUD LOCALES TIMEZONE KEYBOARD_LAYOUTS KEYBOARD_MODEL KEYBOARD_OPTIONS KEYBOARD_VARIANTS || error "Failed to update the configuration file."
 information "Configuration file updated."
 
 # Showing the new configuration file
