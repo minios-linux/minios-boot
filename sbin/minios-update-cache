@@ -6,8 +6,14 @@
     Usage:   $0 [bundles mount points location]
     Example: $0 /run/initramfs/memory/bundles" && exit 1
 
+# Ensure the script is run as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root!"
+    exit 1
+fi
+
 mkdir -p /var/log/minios
-exec 19>/var/log/minios/minios-update-cache.trace
+exec 19>/var/log/minios/minios-update-cache.trace.log
 BASH_XTRACEFD=19
 PS4='${LINENO}: '
 set -x
@@ -63,10 +69,6 @@ BUNDLES="$1"
 CORE_BUNDLE_PREFIX="00-core"
 BEXT="sb"
 
-if [ $(id -u) -ne 0 ]; then
-    echo -e "${BOLD}${RED}This script should be run as 'root'!${ENDCOLOR}"
-    exit 1
-fi
 
 export HOME=/root
 export LC_ALL=C
