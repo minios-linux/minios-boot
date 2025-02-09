@@ -10,7 +10,7 @@ allow_root_only
 if [ ! -d "/var/log/minios" ]; then
     mkdir -p "/var/log/minios"
 fi
-exec 19>"/var/log/minios/startup.trace"
+exec 19>"/var/log/minios/minios-startup.trace.log"
 BASH_XTRACEFD=19
 PS4='${LINENO}: '
 set -x

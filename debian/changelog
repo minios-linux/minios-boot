@@ -1,3 +1,10 @@
+minios-boot (1.2.4) unstable; urgency=medium
+
+  * Renamed startup.output and statrup.trace logs to minios-startup.output.log and minios-startup.output.log.
+  * Fixed a bug that could cause a created user to be deleted in `puzzle` mode.
+
+ -- crims0n <crims0n@minios.dev>  Sun, 09 Feb 2025 01:05:40 +0300
+
 minios-boot (1.2.3) unstable; urgency=medium
 
   * Added support for LOCALES, TIMEZONE and keyboard configuration variables and customizing locales, tzdata and keyboard configurations depending on them.
