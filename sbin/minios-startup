@@ -270,17 +270,17 @@ if [ "$SYSTEM_TYPE" = "puzzle" ]; then
 
     if [ -x /usr/sbin/minios-update-users ]; then
         information "Updating users with minios-update-users"
-        minios-update-users "$BUNDLES" "$CHANGES" >/var/log/minios/minios-update-users.output 2>&1
+        minios-update-users "$BUNDLES" "$CHANGES" >/var/log/minios/minios-update-users.output.log 2>&1
     fi
 
     if [ -x /usr/sbin/inios-update-cache ]; then
         information "Updating cache with minios-update-cache"
-        minios-update-cache "$BUNDLES" >/var/log/minios/minios-update-cache.output 2>&1 &
+        minios-update-cache "$BUNDLES" >/var/log/minios/minios-update-cache.output.log 2>&1 &
     fi
 
     if [ -x /usr/sbin/minios-update-dpkg ]; then
         information "Updating dpkg with minios-update-dpkg"
-        minios-update-dpkg "$BUNDLES" "$CHANGES" >/var/log/minios/minios-update-dpkg.output 2>&1 &
+        minios-update-dpkg "$BUNDLES" "$CHANGES" >/var/log/minios/minios-update-dpkg.output.log 2>&1 &
     fi
 fi
 

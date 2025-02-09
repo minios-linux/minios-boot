@@ -1,7 +1,8 @@
 minios-boot (1.2.4) unstable; urgency=medium
 
-  * Renamed startup.output and statrup.trace logs to minios-startup.output.log and minios-startup.output.log.
+  * Renamed startup.output and startup.trace logs to minios-startup.output.log and minios-startup.output.log. Most other logs are renamed in the same style.
   * Fixed a bug that could cause a created user to be deleted in `puzzle` mode.
+  * Improved processing of user and group files in `puzzle` mode.
 
  -- crims0n <crims0n@minios.dev>  Sun, 09 Feb 2025 01:05:40 +0300
 
